@@ -1,0 +1,51 @@
+services:
+  api:
+    build: .
+    container_name: docai-api
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/app/chroma_data
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: docai-postgres
+    environment:
+      POSTGRES_USER: docai
+      POSTGRES_PASSWORD: docai
+      POSTGRES_DB: docai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Optional: run a fully local, zero-API-cost LLM instead of Claude.
+  # Start with: docker compose --profile local-llm up
+  # Then set LLM_PROVIDER=ollama in .env and `docker exec docai-ollama ollama pull llama3.1`
+  ollama:
+    image: ollama/ollama:latest
+    container_name: docai-ollama
+    profiles: ["local-llm"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  chroma_data:
+  uploads:
+  ollama_data:
